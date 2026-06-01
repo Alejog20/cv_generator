@@ -1,75 +1,78 @@
-import sys
-import time
-from rich.console import Console
-from rich.panel import Panel
-from rich.prompt import Prompt
-from rich.text import Text
-from rich.layout import Layout
-from rich.traceback import install
+import streamlit as st
+import os
+from generator import generate_pdf
 
-install()
+st.set_page_config(page_title="Modern CV Generator", page_icon="📄", layout="centered")
 
-from main import generate_cv_pdf
+st.title("📄 Modern CV Generator")
+st.markdown("Fill out the forms below to dynamically generate a state-of-the-art PDF CV.")
 
-console = Console()
-
-def display_header():
-    """Displays a professional application header."""
-    console.clear()
-    header_text = Text("🚀 Enterprise CV Generator System", style="bold white on blue", justify="center")
-    header_panel = Panel(header_text, border_style="blue", padding=(1, 2))
-    console.print(header_panel)
-    console.print("[dim]Version 2.0 | ScotiaGBS Application Target[/dim]\n", justify="center")
-
-def main():
-    display_header()
+with st.form("cv_inputs"):
+    st.subheader("1. Personal Details")
+    name = st.text_input("Full Name", placeholder="e.g. Alex Johnson")
+    title = st.text_input("Professional Title", placeholder="e.g. Lead Machine Learning Engineer")
     
-    # Simple interactive menu
-    console.print("[bold cyan]System Initialization Sequence[/bold cyan]")
-    console.print("1. Target Role: [green]Associate Automation Developer[/green]")
-    console.print("2. Target Company: [green]ScotiaGBS[/green]\n")
+    col1, col2 = st.columns(2)
+    with col1:
+        email = st.text_input("Email", placeholder="alex@example.com")
+        linkedin = st.text_input("LinkedIn Profile", placeholder="linkedin.com/in/alexjohnson")
+    with col2:
+        phone = st.text_input("Phone", placeholder="+1 555-0198")
+        github = st.text_input("GitHub Profile (Optional)", placeholder="github.com/alexjohnson")
+
+    st.subheader("2. Professional Summary")
+    summary = st.text_area("Summary", placeholder="Briefly highlight your expertise and career goals...", height=100)
+
+    st.subheader("3. Experience")
+    st.caption("Tip: Write your role, company, and dates, followed by bullet points.")
+    experience = st.text_area("Work History", placeholder="Senior Developer @ Tech Innovations (2022 - Present)\n- Led a team of 5 engineers...\n- Architected a cloud-native solution...", height=150)
+
+    st.subheader("4. Education")
+    education = st.text_area("Academic Background", placeholder="B.S. in Computer Science - University of State (2018-2022)", height=100)
+
+    st.subheader("5. Skills")
+    skills_input = st.text_input("Core Skills (comma separated)", placeholder="Python, Docker, React, AWS, Agile")
+
+    st.subheader("6. Featured Technical Projects (Optional)")
+    st.caption("Click the '+' to add a new project, or select a row and press Delete/Backspace to remove it.")
     
-    # Prompt the user for a custom filename
-    default_filename = "Alejandro_Garcia_Automation_CV.pdf"
-    user_filename = Prompt.ask(
-        "[bold yellow]Enter output filename[/bold yellow]", 
-        default=default_filename
+    default_projects = [{"Name": "", "Link": "", "Description": ""}]
+    edited_projects = st.data_editor(
+        default_projects,
+        num_rows="dynamic",
+        use_container_width=True,
+        hide_index=True
     )
-    
-    # Add .pdf extension if the user forgot it
-    if not user_filename.endswith(".pdf"):
-        user_filename += ".pdf"
-    
-    console.print("\n")
 
-    # Use rich's status spinner for a professional loading effect
-    with console.status(f"[bold green]Compiling ATS-optimized CV: {user_filename}...", spinner="dots"):
-        # Artificial delay to show off the cool spinner (remove in production if desired)
-        time.sleep(1.5) 
+    submitted = st.form_submit_button("Generate PDF CV", type="primary")
+
+if submitted:
+    cv_data = {
+        "name": name,
+        "title": title,
+        "email": email,
+        "phone": phone,
+        "linkedin": linkedin,
+        "github": github,
+        "summary": summary,
+        "experience": experience,
+        "education": education,
+        "skills": [skill.strip() for skill in skills_input.split(",") if skill.strip()],
+        "projects": edited_projects
+    }
+    
+    with st.spinner("Compiling your state-of-the-art CV..."):
+        success, result = generate_pdf(cv_data)
         
-        # Call the backend engine
-        success, message = generate_cv_pdf(output_filename=user_filename)
-
-    # Handle the results gracefully
     if success:
-        success_panel = Panel(
-            Text(f" PROCESS COMPLETE\n\n{message}", justify="center", style="bold green"),
-            border_style="green"
-        )
-        console.print(success_panel)
-        console.print("\n[bold]Next Step:[/bold] Review the PDF and prepare your ScotiaGBS application.")
+        st.success(f"Success! Your CV has been saved to the `{result}` folder.")
+        with open(result, "rb") as pdf_file:
+            st.download_button(
+                label="⬇️ Download PDF Now",
+                data=pdf_file,
+                file_name=f"{name.replace(' ', '_')}_CV.pdf",
+                mime="application/pdf"
+            )
     else:
-        error_panel = Panel(
-            Text(f" GENERATION FAILED\n\n{message}", justify="left", style="bold red"),
-            border_style="red",
-            title="System Error"
-        )
-        console.print(error_panel)
-        console.print("\n[bold yellow]Troubleshooting Tip:[/bold yellow] If you see an OS/Dependency error on Windows, you likely need to install GTK3. Search 'WeasyPrint Windows Installation' for the official guide.")
-
-if __name__ == "__main__":
-    try:
-        main()
-    except KeyboardInterrupt:
-        console.print("\n[bold red]Process aborted by user.[/bold red]")
-        sys.exit(0)
+        st.error("Oops! We encountered an issue while generating your PDF.")
+        st.code(f"Compiler Error: {result}", language="text")
