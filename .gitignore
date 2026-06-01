@@ -5,4 +5,8 @@ dist/
 wheels/
 *.egg-info
 
+
 .venv
+
+.pdf
+.log
