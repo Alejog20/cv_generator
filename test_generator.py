@@ -30,7 +30,8 @@ def test_generate_pdf_success(sample_cv_data, tmp_path):
     
     success, result = generate_pdf(sample_cv_data, output_filename=output_file)
     
-    assert success is True
+    # By adding the result to the assert, Pytest will print the exact Typst error if it fails!
+    assert success is True, f"PDF Generation failed with error: {result}"
     assert os.path.exists(result), "The PDF file was not found on the disk."
     assert result.endswith(".pdf"), "The output does not have a PDF extension."
 
